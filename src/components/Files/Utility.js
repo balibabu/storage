@@ -1,26 +1,28 @@
 import { chunkIdRepoSize, getFreeRepo } from "../context/currentCRUD";
-import { gitcurrentpath, gitfilespath, gitrepo, gitusername, temp } from "../context/StaticVars";
-import { creater, updater } from "../services/basics";
+import { gitusername, maxreposize, temp } from "../context/StaticVars";
+import { creater } from "../services/basics";
 
-export async function blobToStr(blob) {
+export async function blobToBinBase64(blob) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
-        reader.onload = function (event) {
-            const content = event.target.result;
-            resolve(content);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob); // Converts to base64
+        reader.readAsArrayBuffer(blob);
+        reader.onload = async (event) => {
+            const binaryData = event.target.result;
+            const base64 = btoa(
+                new Uint8Array(binaryData)
+                    .reduce((data, byte) => data + String.fromCharCode(byte), '')
+            );
+            resolve(base64);
+        }
     });
 }
 
 export async function getChunks(file) {
     const chunks = [];
-    const max_chunk_size = 50000;
-    const totalChunks = Math.ceil(file.size / max_chunk_size);
+    const totalChunks = Math.ceil(file.size / maxreposize);
     for (let i = 0; i < totalChunks; i++) {
-        const start = i * max_chunk_size;
-        const end = Math.min(file.size, start + max_chunk_size);
+        const start = i * maxreposize;
+        const end = Math.min(file.size, start + maxreposize);
         const chunk = file.slice(start, end);
         chunks.push(chunk);
     }
@@ -29,21 +31,13 @@ export async function getChunks(file) {
 
 export async function uploadInRepo(chunk) {
     const [freeRepo, chunkName] = await getFreeRepo(chunk.size);
-    const str64 = await blobToStr(chunk);
+    const str64 = await blobToBinBase64(chunk);
     const response = await creater(gitusername, freeRepo, chunkName, str64, temp);
     if (response.status === 201) {
         await chunkIdRepoSize(chunk.size);
     }
     return [freeRepo, chunkName];
 }
-
-// export async function updateFilesOnGit(updatedFiles, fileSha, setFileSha) {
-//     console.log(updatedFiles);
-//     console.log(fileSha);
-
-//     const response = await updater(gitusername, gitrepo, gitfilespath, JSON.stringify(updatedFiles), temp, fileSha);
-//     setFileSha(response.data.content.sha);
-// }
 
 export default function Confirmation(message) {
     const confirmDelete = window.confirm(message);

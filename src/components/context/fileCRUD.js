@@ -1,5 +1,5 @@
 import { getChunks, uploadInRepo } from "../Files/Utility";
-import { fileMetaData, updater } from "../services/basics";
+import { fileMetaData, getContent, updater } from "../services/basics";
 import { gitfilespath, gitrepo, gitusername, temp } from "./StaticVars";
 
 let files = null;
@@ -31,7 +31,7 @@ export async function uploadFile(file) {
         chunks: uploadedChunks
     }
     const updatedFiles = [...files, createdFile];
-    const response = await updater(gitusername, gitrepo, gitfilespath, JSON.stringify(updatedFiles), temp, filesha);
+    const response = await updater(gitusername, gitrepo, gitfilespath, btoa(JSON.stringify(updatedFiles)), temp, filesha);
     filesha = response.data.content.sha;
     files.push(createdFile);
 }
@@ -45,7 +45,29 @@ export async function fileSetter(setList) {
 }
 
 export async function updateFilesOnGit(updatedFiles) {
-    const response = await updater(gitusername, gitrepo, gitfilespath, JSON.stringify(updatedFiles), temp, filesha);
+    const response = await updater(gitusername, gitrepo, gitfilespath, btoa(JSON.stringify(updatedFiles)), temp, filesha);
     filesha = response.data.content.sha;
     files = updatedFiles;
+}
+
+export async function chunkDownloader(repo, path) {
+    const res1 = await fileMetaData(gitusername, repo, path, temp);
+    if (res1.data.content) {
+        return base64ToBytes(res1.data.content);
+    } else {
+        const sha = res1.data.sha;
+        console.log(sha);
+        
+        const res2 = await getContent(gitusername, repo, temp, sha);
+        return base64ToBytes(res2.data.content);
+    }
+}
+
+async function base64ToBytes(contentB64) {
+    const string = atob(contentB64);
+    const byteArray = new Uint8Array(string.length);
+    for (let i = 0; i < string.length; i++) {
+        byteArray[i] = string.charCodeAt(i);
+    }
+    return byteArray;
 }

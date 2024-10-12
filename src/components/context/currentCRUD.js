@@ -26,7 +26,7 @@ export async function createNewRepo() {
         chunkId: current.chunkId,
         repoId: current.repoId + 1
     }
-    const response = await updater(gitusername, gitrepo, gitcurrentpath, JSON.stringify(current), temp, currentSha);
+    const response = await updater(gitusername, gitrepo, gitcurrentpath, btoa(JSON.stringify(current)), temp, currentSha);
     currentSha = response.data.content.sha;
 }
 
@@ -43,7 +43,7 @@ export async function getFreeRepo(size) {
 
 export async function chunkIdRepoSize(size) {
     current = { ...current, size: current.size - size, chunkId: current.chunkId + 1 }
-    const response = await updater(gitusername, gitrepo, gitcurrentpath, JSON.stringify(current), temp, currentSha);
+    const response = await updater(gitusername, gitrepo, gitcurrentpath, btoa(JSON.stringify(current)), temp, currentSha);
     currentSha = response.data.content.sha;
 }
 
